@@ -32,6 +32,8 @@ from torch.autograd import Variable
 from replay_buffer import ReplayMemory, Transition
 
 use_cuda = torch.cuda.is_available()
+use_cuda = False
+
 device = torch.device("cuda" if use_cuda else "cpu")  # 使用GPU进行训练
 
 

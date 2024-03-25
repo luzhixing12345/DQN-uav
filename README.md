@@ -3,6 +3,8 @@
 
 本文基于强化学习算法DQN实现离散3维城市空间环境下的智能航线规划,能根据无人机感知进行避障,并根据风速情况选择能耗较低的路线.
 
+![avatar](./images/a.gif) ![avatar](./images/b.gif)
+
 ## 依赖
 
 python pytorch
@@ -35,16 +37,24 @@ python watch_uav.py
 
 ## 预训练模型下载
 
-|  model  | download url |
-| :-----: | :----------: |
-| Qlocal.pth  | [download]() |
-| Qtarget.pth | [download]() |
+|    model    |                                          download url                                           |
+| :---------: | :---------------------------------------------------------------------------------------------: |
+| Qlocal.pth  | [download](https://github.com/luzhixing12345/DQN-uav/releases/download/v0.0.1/Qlocal_1000.pth)  |
+| Qtarget.pth | [download](https://github.com/luzhixing12345/DQN-uav/releases/download/v0.0.1/Qtarget_1000.pth) |
 
-下载后保存在 `checkpoints/Qlocal.pth` 和 `checkpoints/Qtarget.pth`
+下载后保存在 `checkpoints/Qlocal_1000.pth` 和 `checkpoints/Qtarget_1000.pth`
 
 ```bash
 python watch_uav.py
 ```
+ 
+> 数据结果处理画图
+>
+> ```python
+> python draw.py
+> ```
+
+实验报告见 [report.md](./report.md)
 
 ## 模型简介
 在x100 y100 z22的三维空间中,采用课程学习方式对无人机智能体进行训练,利用设置好的不同难度的课程对智能体进行梯度训练,能让智能体更快地获取决策经验.由于训练初期缺乏决策经验,需要随机选择行为对环境进行试探,本文设置随机试探周期为1000,周期内采用ε-贪心策略选择智能体行为,周期内贪心概率从1逐渐递减到0.01.1000周期后贪心概率保持在0.01.在一个周期的训练场景中随机生成15个无人机对象,当所有无人机进入终止状态(电量耗尽、坠毁、到达目标点、超过最大步长)后进入下一个周期的训练,当80%以上的无人机能够到达目标点时进入下一难度等级的训练.
@@ -57,8 +67,6 @@ python watch_uav.py
 DQN.py:(main函数 入口1)设置模型训练参数与城市环境参数,对DQN模型进行训练,输出Qlocal.pth与Qtarget.pth文件
 
 watch_uav.py:(main函数 入口2)对训练好的决策模型进行测试,载入Qlocal.pth与Qtarget.pth文件,对无人机航迹规划过程进行可视化
-
-![avatar](./images/path1.gif) ![avatar](./images/path2.gif)
 
 env.py:设置env类,对城市环境进行描述,实现该环境中的所有UAV与传感器运行的仿真模拟
 

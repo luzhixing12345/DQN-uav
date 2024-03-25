@@ -18,7 +18,8 @@ import tqdm
 
 # plt.ion()
 
-use_cuda = torch.cuda.is_available()
+# use_cuda = torch.cuda.is_available()
+use_cuda = False
 device = torch.device("cuda" if use_cuda else "cpu")
 
 BATCH_SIZE = 128  # 批量大小
@@ -163,7 +164,7 @@ def train():
 
     f = open("result.txt", "w")
 
-    for i_episode in range(num_episodes):
+    for i_episode in tqdm.tqdm(range(num_episodes)):
         eps = epsilon_annealing(i_episode, max_eps_episode, min_eps)  # 计算贪心概率
         score, info = run_episode(env, eps)  # 运行一幕,获得得分,返回到达目标的个数
 
@@ -191,10 +192,10 @@ def train():
                 info[2],
                 info[3],
             )
-            print(output_str)
+            # print(output_str)
             f.write(output_str)
             f.flush()
-            print(f"{i_episode}/{num_episodes} [{i_episode/num_episodes:.2%}]")
+            # print(f"{i_episode}/{num_episodes} [{i_episode/num_episodes:.2%}]")
         # 保存模型参数
         if i_episode % 500 == 0:
             # 每100周期保存一次网络参数
