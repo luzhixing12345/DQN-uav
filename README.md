@@ -48,7 +48,7 @@ python watch_uav.py
 python watch_uav.py
 ```
  
-> 数据结果处理画图
+> 对训练结果 result.txt 处理数据并画图
 >
 > ```python
 > python draw.py

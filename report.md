@@ -38,6 +38,8 @@
 
 ![20240325172434](https://raw.githubusercontent.com/learner-lu/picbed/master/20240325172434.png)
 
+模型构成如上所示, 采用全连接层连接, 42x16x16x16x27 的维度, 模型大小 36KB
+
 ## 解决思路
 
 - **环境建模**:构建一个二维网格世界作为无人机的飞行环境,其中包含起点、终点和若干障碍物.
@@ -46,11 +48,92 @@
 - **奖励函数**:设计一个奖励函数来指导无人机学习,奖励与飞行距离、碰撞、电池消耗和到达目标的速度相关.
 - **DQN训练**:通过与环境交互,无人机使用DQN算法学习最优策略.在每个时间步,无人机根据当前状态选择动作,并接收环境的反馈(新状态和奖励).
 
+建筑物的参数信息
+
+```python
+class building:
+    def __init__(self, x, y, l, w, h):
+        self.x = x  # 建筑中心x坐标
+        self.y = y  # 建筑中心y坐标
+        self.l = l  # 建筑长半值
+        self.w = w  # 建筑宽半值
+        self.h = h  # 建筑高度
+```
+
+无人机的信息
+
+```python
+class UAV:
+    def __init__(self, x, y, z, ev):
+        # 初始化无人机坐标位置
+        self.x = x
+        self.y = y
+        self.z = z
+        # 初始化无人机目标坐标
+        self.target = [ev.target[0].x, ev.target[0].y, ev.target[0].z]
+        self.ev = ev  # 无人机所处环境
+        # 初始化无人机运动情况
+        self.bt = 5000  # 无人机电量
+        self.dir = 0  # 无人机水平运动方向,八种情况(弧度)
+        self.p_bt = 10  # 无人机基础能耗,能耗/步
+        self.now_bt = 4  # 无人机当前状态能耗
+        self.cost = 0  # 无人机已经消耗能量
+        self.detect_r = 5  # 无人机探测范围 (格)
+```
+
+核心强化学习算法
+
+```python
+def learn(self, gamma, BATCH_SIZE):
+    """Prepare minibatch and train them  准备训练
+
+    Args:
+    experiences (List[Transition]): batch of `Transition`
+    gamma (float): Discount rate of Q_target  折扣率
+    """
+
+    if len(self.replay_memory.memory) < BATCH_SIZE:
+        return
+
+    transitions = self.replay_memory.sample(BATCH_SIZE)  # 获取批量经验数据
+
+    batch = Transition(*zip(*transitions))
+
+    states = torch.cat(batch.state)
+    actions = torch.cat(batch.action)
+    rewards = torch.cat(batch.reward)
+    next_states = torch.cat(batch.next_state)
+    dones = torch.cat(batch.done)
+
+    # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
+    # columns of actions taken. These are the actions which would've been taken
+    # for each batch state according to newtork q_local (current estimate)
+    Q_expected = self.q_local(states).gather(1, actions)  # 获得Q估计值
+
+    Q_targets_next = self.q_target(next_states).detach().max(1)[0]  # 计算Q目标值估计
+
+    # Compute the expected Q values
+    Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))  # 更新Q目标值
+    # 训练Q网络
+    self.q_local.train(mode=True)
+    self.optim.zero_grad()
+    loss = self.mse_loss(Q_expected, Q_targets.unsqueeze(1))  # 计算误差
+    # backpropagation of loss to NN
+    loss.backward()
+    self.optim.step()
+```
+
+奖励函数中首先根据Q值选取动作,然后根据选取的动作改变状态,获取收益,求总收益, 同时存储每一次的交互经验
+
+对于成功的状态进行正奖励,加强经验并完成状态变更
+
+如果通过率较大,则难度升级
+
 ## 实验分析
 
 为了验证DQN算法的有效性,我们在一个包含多个障碍物的复杂环境中进行了模拟实验.实验结果显示,经过足够的训练后,无人机能够有效地学习到从起点到终点的最优路径,同时避免了障碍物并考虑了电池续航.
 
-训练过程中的平均得分变化:
+模型训练过程中的平均得分变化:
 
 ![](./images/Figure_1.png)
 
@@ -67,3 +150,4 @@
 ## 参考
 
 - [DQN-uav](https://github.com/luzhixing12345/DQN-uav)
+- [alexlenail](https://alexlenail.me/NN-SVG/index.html)
