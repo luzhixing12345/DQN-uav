@@ -10,26 +10,15 @@
 ##############################################################################
 import numpy as np
 import torch
-import matplotlib
 import time
 from env import *
 from collections import deque
 import torch
-
-use_cuda = torch.cuda.is_available()
-FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
-
-device = torch.device("cuda" if use_cuda else "cpu")  # 使用GPU进行训练
-
-# set up matplotlib
-is_ipython = "inline" in matplotlib.get_backend()
-if is_ipython:
-    from IPython import display
+import tqdm
 
 # plt.ion()
 
 use_cuda = torch.cuda.is_available()
-FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 device = torch.device("cuda" if use_cuda else "cpu")
 
 BATCH_SIZE = 128  # 批量大小
@@ -39,7 +28,7 @@ LEARNING_RATE = 0.0004  # 学习率
 TARGET_UPDATE = 10  # Q网络更新周期
 
 num_episodes = 40000  # 训练周期长度
-print_every = 1
+print_every = 10  # 打印周期
 hidden_dim = 16  ## 64 ## 16
 min_eps = 0.01  # 贪心概率
 max_eps_episode = 10  # 最大贪心次数
@@ -71,7 +60,7 @@ def save(directory, filename):  # 存放Q网络参数
     torch.save(env.q_target.state_dict(), "%s/%s_target.pth" % (directory, filename))
 
 
-def run_episode(env, eps):
+def run_episode(env: Env, eps):
     """Play an epsiode and train  进行训练
 
     Args:
@@ -99,7 +88,14 @@ def run_episode(env, eps):
             if env.uavs[i].done:
                 # 无人机已结束任务,跳过
                 continue
-            action = env.get_action(FloatTensor(np.array([state[i]])), eps)  # 根据Q值选取动作
+            action = env.get_action(
+                torch.tensor(
+                    np.array([state[i]]),
+                    dtype=torch.float,
+                    device=device,
+                ),
+                eps,
+            )  # 根据Q值选取动作
 
             next_state, reward, uav_done, info = env.step(action.detach(), i)  # 根据选取的动作改变状态,获取收益
 
@@ -108,22 +104,22 @@ def run_episode(env, eps):
             # Store the transition in memory   存储交互经验
             env.replay_memory.push(
                 (
-                    FloatTensor(np.array([state[i]])),
+                    torch.tensor(np.array([state[i]]), dtype=torch.float, device=device),
                     action,  # action is already a tensor
-                    FloatTensor([reward]),
-                    FloatTensor([next_state]),
-                    FloatTensor([uav_done]),
+                    torch.tensor([reward], dtype=torch.float, device=device),
+                    torch.tensor([next_state], dtype=torch.float, device=device),
+                    torch.tensor([uav_done], dtype=torch.float, device=device),
                 )
             )
             """ if reward>0:
                 #正奖励,加强经验
                 for t in range(2):
                     env.replay_memory.push(
-                        (FloatTensor(np.array([state[i]])), 
+                        (torch.tensor(np.array([state[i]])), 
                         action, # action is already a tensor
-                        FloatTensor([reward]), 
-                        FloatTensor([next_state]), 
-                        FloatTensor([uav_done]))) """
+                        torch.tensor([reward]), 
+                        torch.tensor([next_state]), 
+                        torch.tensor([uav_done]))) """
             if info == 1:
                 success_count = success_count + 1
             elif info == 2:
@@ -165,6 +161,8 @@ def train():
     env.optim.load_state_dict(check_point_Qlocal["optimizer"])
     epoch = check_point_Qlocal["epoch"]
 
+    f = open("result.txt", "w")
+
     for i_episode in range(num_episodes):
         eps = epsilon_annealing(i_episode, max_eps_episode, min_eps)  # 计算贪心概率
         score, info = run_episode(env, eps)  # 运行一幕,获得得分,返回到达目标的个数
@@ -177,39 +175,42 @@ def train():
 
         dt = (int)(time.time() - time_start)
 
-        if i_episode % print_every == 0 and i_episode > 0:
-            print(
-                "sum_Episode: {:5} Episode: {:5} Score: {:5}  Avg.Score: {:.2f}, eps-greedy: {:5.2f} Time: {:02}:{:02}:{:02} level:{:5}  num_success:{:2}  num_crash:{:2}  num_none_energy:{:2}  num_overstep:{:2}".format(
-                    i_episode + epoch,
-                    i_episode,
-                    score,
-                    avg_score,
-                    eps,
-                    dt // 3600,
-                    dt % 3600 // 60,
-                    dt % 60,
-                    env.level,
-                    info[0],
-                    info[1],
-                    info[2],
-                    info[3],
-                )
+        if i_episode % print_every == 0:
+            output_str = "sum_Episode: {:5} Episode: {:5} Score: {:5}  Avg.Score: {:.2f}, eps-greedy: {:5.2f} Time: {:02}:{:02}:{:02} level:{:5}  num_success:{:2}  num_crash:{:2}  num_none_energy:{:2}  num_overstep:{:2}\n".format(
+                i_episode + epoch,
+                i_episode,
+                score,
+                avg_score,
+                eps,
+                dt // 3600,
+                dt % 3600 // 60,
+                dt % 60,
+                env.level,
+                info[0],
+                info[1],
+                info[2],
+                info[3],
             )
+            print(output_str)
+            f.write(output_str)
+            f.flush()
+            print(f"{i_episode}/{num_episodes} [{i_episode/num_episodes:.2%}]")
         # 保存模型参数
-        if i_episode % 100 == 0:
+        if i_episode % 500 == 0:
             # 每100周期保存一次网络参数
             state = {
                 "model": env.q_target.state_dict(),
                 "optimizer": env.optim.state_dict(),
                 "epoch": i_episode + epoch,
             }
-            torch.save(state, "Qtarget.pth")
+            torch.save(state, f"checkpoints/Qtarget_{i_episode}.pth")
             state = {"model": env.q_local.state_dict(), "optimizer": env.optim.state_dict(), "epoch": i_episode + epoch}
-            torch.save(state, "Qlocal.pth")
+            torch.save(state, f"checkpoints/Qlocal_{i_episode}.pth")
 
         if i_episode % TARGET_UPDATE == 0:
             env.q_target.load_state_dict(env.q_local.state_dict())
 
+    f.close()
     return scores_array, avg_scores_array
 
 

@@ -3,3 +3,6 @@ __pycache__/
 */__pycache__
 */*/__pycache__
 
+report.md
+checkpoints/*.pth
+result.txt

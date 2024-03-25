@@ -16,9 +16,7 @@
 ##############################################################################
 import numpy as np
 import torch
-import matplotlib
 import matplotlib.pyplot as plt
-import time
 from env import *
 import torch
 
@@ -51,7 +49,7 @@ if __name__ == "__main__":
             if env.uavs[0].done:
                 # 无人机已结束任务,跳过
                 break
-            action = env.get_action(FloatTensor(np.array([state[0]])), 0.01)  # 根据Q值选取动作
+            action = env.get_action(torch.tensor(np.array([state[0]]), dtype=torch.float, device=device), 0.01)  # 根据Q值选取动作
 
             next_state, reward, uav_done, info = env.step(action.item(), 0)  # 根据选取的动作改变状态,获取收益
 
@@ -68,4 +66,3 @@ if __name__ == "__main__":
             state[0] = next_state  # 状态变更
         print(env.uavs[0].step)
         env.ax.scatter(env.target[0].x, env.target[0].y, env.target[0].z, c="red")
-        plt.pause(100)

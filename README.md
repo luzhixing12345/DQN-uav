@@ -37,8 +37,8 @@ python watch_uav.py
 
 |  model  | download url |
 | :-----: | :----------: |
-| Qlocal  | [download]() |
-| Qtarget | [download]() |
+| Qlocal.pth  | [download]() |
+| Qtarget.pth | [download]() |
 
 下载后保存在 `checkpoints/Qlocal.pth` 和 `checkpoints/Qtarget.pth`
 

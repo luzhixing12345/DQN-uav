@@ -17,12 +17,12 @@
 # The env class member function can implement UAV behavioral decision-making,
 # UAV decision-making experience learning, environment visualization, and single-time-step deduction.
 ##############################################################################
-import time
+
 import numpy as np
 import random
 import math
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from typing import List
 import torch
 import torch.optim as optim
 import random
@@ -32,7 +32,6 @@ from torch.autograd import Variable
 from replay_buffer import ReplayMemory, Transition
 
 use_cuda = torch.cuda.is_available()
-FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 device = torch.device("cuda" if use_cuda else "cpu")  # 使用GPU进行训练
 
 
@@ -62,7 +61,7 @@ class Env(object):
         self.WindField = [30, 0]  # 风场(风速,风向角)
         # self.action_space=spaces.Discrete(27)  #定义无人机动作空间(0-26),用三进制对动作进行编码 0:-1 1:0 2:+1
         # self.observation_space=spaces.Box(shape=(self.len,self.width,self.h),dtype=np.uint8)  #定义观测空间(规划空间),能描述障碍物情况与风向
-        self.uavs = []  # 无人机对象集合
+        self.uavs: List[UAV] = []  # 无人机对象集合
         self.bds = []  # 建筑集合
         self.target = []  # 无人机对象
         self.n_uav = 15  # 训练环境中的无人机个数
@@ -92,12 +91,11 @@ class Env(object):
 
         Returns: int: action index    动作索引
         """
-        global steps_done
         sample = random.random()
 
         if check_eps == False or sample > eps:
             with torch.no_grad():
-                return self.q_local(Variable(state).type(FloatTensor)).data.max(1)[1].view(1, 1)  # 根据Q值选择行为
+                return self.q_local(Variable(state)).data.max(1)[1].view(1, 1)  # 根据Q值选择行为
         else:
             ## return LongTensor([[random.randrange(2)]])
             return torch.tensor([[random.randrange(self.n_actions)]], device=device)  # 随机选取动作
