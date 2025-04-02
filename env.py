@@ -70,7 +70,7 @@ class Env(object):
         self.v0 = 40  # 无人机可控风速
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(1, 1, 1, projection="3d")
-        plt.ion()  # interactive mode on
+        # plt.ion()  # interactive mode on
         self.level = 1  # 训练难度等级(0-10)
 
         # 神经网络参数
@@ -150,7 +150,14 @@ class Env(object):
         for target_param, param in zip(target.parameters(), local.parameters()):
             target_param.data.copy_(param.data)
 
-    def render(self, flag=0):
+    def render(self, flag=0, save_frames=False, frames=None):
+        """
+        渲染 UAV 轨迹:
+        - 若 `save_frames=True`,则将帧保存到 `frames` 列表,不进行实时显示.
+        - 若 `save_frames=False`,则执行正常的渲染.
+        """
+        if save_frames and frames is None:
+            raise ValueError("If save_frames is True, frames list must be provided.")
         # 绘制封闭立方体
         # 参数
         # x,y,z立方体中心坐标
@@ -191,6 +198,13 @@ class Env(object):
         for uav in self.uavs:
             # 绘制无人机坐标点
             self.ax.scatter(uav.x, uav.y, uav.z, c="blue")
+
+        if save_frames:
+            self.fig.canvas.draw()
+            frame = np.array(self.fig.canvas.renderer.buffer_rgba())  # 保存帧
+            frames.append(frame)
+        
+        plt.pause(0.01)
 
     def step(self, action, i):
         """环境的主要驱动函数,主逻辑将在该函数中实现.该函数可以按照时间轴,固定时间间隔调用

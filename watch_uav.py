@@ -16,11 +16,13 @@
 ##############################################################################
 import numpy as np
 import torch
+import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from env import *
 import torch
 import os
-
+import sys
 LEARNING_RATE = 0.00033  # 学习率
 num_episodes = 80000  # 训练周期长度
 space_dim = 42  # n_spaces   状态空间维度
@@ -28,6 +30,11 @@ action_dim = 27  # n_actions   动作空间维度
 threshold = 200
 env = Env(space_dim, action_dim, LEARNING_RATE)
 
+nogui = False
+if len(sys.argv) == 2:
+    nogui = True
+    matplotlib.use("Agg")
+    print("run in non-interactive mode")
 
 def find_model_ckpt():
     # 查找 checkpoints 目录下的所有文件
@@ -58,12 +65,18 @@ if __name__ == "__main__":
     env.level = 8  # 环境难度等级
     state = env.reset_test()  # 环境重置1
     total_reward = 0
-    env.render(1)
+    
     n_done = 0
     count = 0
 
     n_test = 1  # 测试次数
     n_creash = 0  # 坠毁数目
+    frames = []  # 存储轨迹帧
+    if not nogui:
+        plt.ion()
+    
+    env.render(1, save_frames=True, frames=frames)
+    print("正在运行模拟...")
     for i in range(n_test):
         while 1:
             if env.uavs[0].done:
@@ -78,14 +91,22 @@ if __name__ == "__main__":
             total_reward += reward  # 求总收益
             # 交互显示
             # print(action)
-            env.render()
-            plt.pause(0.01)
+            env.render(save_frames=True, frames=frames)
+            # plt.pause(0.01)
             if uav_done:
                 break
             if info == 1:
                 success_count = success_count + 1
 
             state[0] = next_state  # 状态变更
-        print(env.uavs[0].step)
+        print(f"本次运行已结束, 无人机最终运行步数: {env.uavs[0].step}")
+        print("正在保存并生成GIF...")
         env.ax.scatter(env.target[0].x, env.target[0].y, env.target[0].z, c="red")
-        plt.show()
+        # plt.show()
+        fig, ax = plt.subplots()
+        ims = [[ax.imshow(frame, animated=True)] for frame in frames]  # 这里要用 `[]` 让 `ArtistAnimation` 解析
+        ani = animation.ArtistAnimation(fig, ims, interval=100, blit=True)
+        ani.save("result.gif", writer="pillow", dpi=300)
+        print("本次运行结果已保存到 result.gif")
+
+    plt.close('all')

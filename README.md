@@ -29,10 +29,16 @@ python train.py
 
 训练结束后自动生成 `checkpoints/Qlocal.pth` 和 `checkpoints/Qtarget.pth` 模型参数
 
-观察结果
+观察结果, 该命令会开启一个实时的 GUI 窗口查看无人机的飞行情况, 并最后输出最终到达指定地点所需的步数, 并将最后的结果保存为 `result.gif` 图片
 
 ```bash
 python watch_uav.py
+```
+
+如果您选择通过远程连接的方式登录了一台服务器不能实时预览 GUI 界面, 可以使用 `--no-gui` 参数来关闭 GUI 界面, 该命令会输出最终到达指定地点所需的步数, 并将最后的结果保存为 `result.gif` 图片, 可以后续查看该图片
+
+```bash
+python watch_uav.py --no-gui
 ```
 
 ## 预训练模型下载

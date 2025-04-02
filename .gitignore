@@ -6,3 +6,4 @@ __pycache__/
 report.pdf
 checkpoints/*.pth
 result.txt
+result.gif
